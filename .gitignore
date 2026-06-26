@@ -1,0 +1,4 @@
+node_modules/
+.watchtower/
+*.log
+.DS_Store

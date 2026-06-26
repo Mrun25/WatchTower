@@ -1,0 +1,99 @@
+{
+  "name": "watchtower",
+  "displayName": "Watchtower",
+  "description": "Passive agent-supervision extension for Antigravity. Builds a relationship map of your codebase, detects connection breaks caused by AI agent edits, logs change history, refines vague prompts, and answers questions grounded in real project history.",
+  "version": "0.1.0",
+  "publisher": "watchtower-dev",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "watchtower.toggleWatch",
+        "title": "Watchtower: Scan Project / Toggle Passive Watching",
+        "category": "Watchtower"
+      },
+      {
+        "command": "watchtower.refinePrompt",
+        "title": "Watchtower: Refine Selected Prompt",
+        "category": "Watchtower"
+      },
+      {
+        "command": "watchtower.openChat",
+        "title": "Watchtower: Open Context-Aware Chat",
+        "category": "Watchtower"
+      },
+      {
+        "command": "watchtower.showHud",
+        "title": "Watchtower: Show Status",
+        "category": "Watchtower"
+      },
+      {
+        "command": "watchtower.setApiKey",
+        "title": "Watchtower: Set Mistral API Key",
+        "category": "Watchtower"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "watchtower.toggleWatch",
+        "key": "alt+a",
+        "mac": "alt+a",
+        "when": "editorTextFocus || !editorFocus"
+      },
+      {
+        "command": "watchtower.refinePrompt",
+        "key": "alt+p",
+        "mac": "alt+p",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "watchtower.openChat",
+        "key": "alt+c",
+        "mac": "alt+c",
+        "when": "editorTextFocus || !editorFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Watchtower",
+      "properties": {
+        "watchtower.mistralApiKey": {
+          "type": "string",
+          "default": "E9NDKsvKOV13vxiNDhHtmLe5XbJ9falB",
+          "description": "API key for the Mistral cloud API. Stored via VS Code SecretStorage when set through the 'Watchtower: Set Mistral API Key' command; this setting is a fallback for environments where SecretStorage isn't convenient."
+        },
+        "watchtower.mistralModel": {
+          "type": "string",
+          "default": "mistral-large-latest",
+          "description": "Mistral model name to use for reasoning calls (prompt refinement, chat answers, project summary)."
+        },
+        "watchtower.flagThreshold": {
+          "type": "string",
+          "enum": ["strict", "balanced", "lenient"],
+          "default": "balanced",
+          "description": "How aggressively to flag potential connection breaks. 'strict' flags more, with more false positives. 'lenient' only flags high-confidence breaks."
+        },
+        "watchtower.maxLogEntriesInPromptContext": {
+          "type": "number",
+          "default": 8,
+          "description": "Maximum number of change-log entries to include as context when refining a prompt or answering a chat question, to avoid token-wasteful over-stuffing."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node ./test/runTests.js"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Mistral API Test</h1>
+  <pre id="output">Loading...</pre>
+  <script>
+    async function testMistral() {
+      try {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer E9NDKsvKOV13vxiNDhHtmLe5XbJ9falB'
+          },
+          body: JSON.stringify({
+            model: 'mistral-large-latest',
+            messages: [{ role: 'user', content: 'Say "API IS WORKING" and nothing else.' }],
+            max_tokens: 50,
+            temperature: 0.1
+          })
+        });
+        const data = await response.json();
+        if (data.choices && data.choices.length > 0) {
+            document.getElementById('output').textContent = 'SUCCESS: ' + data.choices[0].message.content;
+        } else {
+            document.getElementById('output').textContent = 'UNEXPECTED: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        document.getElementById('output').textContent = 'ERROR: ' + err.message;
+      }
+    }
+    testMistral();
+  </script>
+</body>
+</html>
