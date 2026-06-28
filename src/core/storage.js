@@ -60,7 +60,12 @@ class Storage {
     if (!fs.existsSync(this.logPath)) {
       return { entries: [] };
     }
-    return JSON.parse(fs.readFileSync(this.logPath, 'utf-8'));
+    try {
+      return JSON.parse(fs.readFileSync(this.logPath, 'utf-8'));
+    } catch {
+      console.warn('[watchtower] change-log.json is corrupted — resetting to empty log.');
+      return { entries: [] };
+    }
   }
 
   writeLog(log) {

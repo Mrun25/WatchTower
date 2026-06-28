@@ -101,7 +101,7 @@ function renderHudHtml(state) {
       const message = event.data;
       if (message.type === 'updateState') {
         const state = message.state;
-        const HUD_STATES = { OFF: 'OFF', SCANNING: 'SCANNING', WATCHING: 'WATCHING', FLAGGED: 'FLAGGED' };
+        const HUD_STATES = { OFF: 'off', SCANNING: 'scanning', WATCHING: 'watching', FLAGGED: 'flagged' };
         const colorByState = {
           [HUD_STATES.OFF]: 'transparent',
           [HUD_STATES.SCANNING]: '#5b8def',

@@ -157,7 +157,7 @@ class MistralClient {
    * Phase 5 (alt+c): answer a chat question grounded in the relationship
    * map and change log, not generic code explanation.
    */
-  async answerChatQuestion({ question, mapContext, logContext, fileContentsContext = [], conversationHistory = [] }) {
+  async answerChatQuestion({ question, mapContext, logContext, fileMetadataContext = null, fileContentsContext = [], conversationHistory = [] }) {
     const system = [
       'You answer questions about a codebase using ONLY the structural',
       'context provided: a relationship map (file/function connections,',
@@ -168,6 +168,11 @@ class MistralClient {
       'than generic programming explanations. If the context does not',
       'contain enough information to answer confidently, say so plainly',
       'rather than guessing. Be concise.',
+      'CRITICAL: Answer using simple terms and natural language (NLP).',
+      'Do NOT use technical jargon or code language. Explain concepts clearly',
+      'so they are accessible to non-technical users.',
+      'If asked about file sizes, line counts, or lines of code, use the provided',
+      'fileMetadataContext to answer accurately.',
     ].join(' ');
 
     const userContent = JSON.stringify(
@@ -175,6 +180,7 @@ class MistralClient {
         question,
         relevantConnections: mapContext.slice(0, 10),
         recentChangeHistory: logContext.slice(0, 8),
+        fileMetadata: fileMetadataContext,
         fileContents: fileContentsContext,
       },
       null,

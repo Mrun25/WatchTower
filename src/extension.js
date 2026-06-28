@@ -168,6 +168,7 @@ async function handleRefinePrompt() {
   const selectedCode = looksLikeProse ? null : selection;
 
   try {
+    terminal.show();
     terminal.writeSystemMessage('Refining prompt...');
     const { refinedPrompt, contextUsed } = await refinePrompt({
       roughInput,

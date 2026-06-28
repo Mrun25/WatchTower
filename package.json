@@ -55,7 +55,7 @@
         "command": "watchtower.refinePrompt",
         "key": "alt+p",
         "mac": "alt+p",
-        "when": "editorTextFocus"
+        "when": "editorTextFocus || !editorFocus"
       },
       {
         "command": "watchtower.openChat",
@@ -92,7 +92,8 @@
     }
   },
   "scripts": {
-    "test": "node ./test/runTests.js"
+    "test": "node ./test/runTests.js",
+    "test:integration": "node ./test/integrationTest.js"
   },
   "devDependencies": {},
   "dependencies": {}

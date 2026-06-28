@@ -43,6 +43,7 @@ function buildFullMap(storage, registry = createDefaultRegistry()) {
   const candidateFiles = storage.listProjectFiles(candidateExtensions); // filter unsupported heavy binaries
 
   const fileResults = [];
+  const mapFiles = [];
   let fallbackCount = 0;
   let parsedCount = 0;
 
@@ -58,6 +59,14 @@ function buildFullMap(storage, registry = createDefaultRegistry()) {
     const relPath = storage.relative(filePath);
     const result = registry.parseFile(relPath, content, ext);
     fileResults.push(result);
+
+    mapFiles.push({
+      file: relPath,
+      sizeBytes: Buffer.byteLength(content, 'utf8'),
+      lineCount: content.split('\n').length,
+      language: result.language || 'unknown',
+      fallback: result.fallback,
+    });
 
     if (result.fallback) fallbackCount++;
     else parsedCount++;
@@ -113,6 +122,7 @@ function buildFullMap(storage, registry = createDefaultRegistry()) {
     symbols: fileResults
       .filter(fr => !fr.fallback)
       .flatMap(fr => fr.symbols.map(s => ({ ...s, file: fr.filePath, language: fr.language }))),
+    files: mapFiles,
   };
 
   return {
@@ -150,6 +160,7 @@ function updateMapForChangedFiles(existingMap, storage, changedFilePaths, regist
   const candidateExtensions = [...allExtensions, ...fallbackExtensions];
   const candidateFiles = storage.listProjectFiles(candidateExtensions);
   const fileResults = [];
+  const mapFiles = [];
 
   for (const filePath of candidateFiles) {
     const ext = path.extname(filePath).slice(1).toLowerCase();
@@ -160,7 +171,15 @@ function updateMapForChangedFiles(existingMap, storage, changedFilePaths, regist
       continue;
     }
     const relPath = storage.relative(filePath);
-    fileResults.push(registry.parseFile(relPath, content, ext));
+    const result = registry.parseFile(relPath, content, ext);
+    fileResults.push(result);
+    mapFiles.push({
+      file: relPath,
+      sizeBytes: Buffer.byteLength(content, 'utf8'),
+      lineCount: content.split('\n').length,
+      language: result.language || 'unknown',
+      fallback: result.fallback,
+    });
   }
 
   const freshConnections = matchRoutes(fileResults);
@@ -202,6 +221,7 @@ function updateMapForChangedFiles(existingMap, storage, changedFilePaths, regist
   updatedMap.symbols = fileResults
     .filter(fr => !fr.fallback)
     .flatMap(fr => fr.symbols.map(s => ({ ...s, file: fr.filePath, language: fr.language })));
+  updatedMap.files = mapFiles;
   updatedMap.stats = {
     filesScanned: fileResults.length,
     filesParsed: fileResults.filter(f => !f.fallback).length,

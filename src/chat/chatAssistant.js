@@ -27,7 +27,7 @@ function retrieveRelevantConnections(map, question) {
     ].filter(Boolean).map(s => s.toLowerCase());
 
     for (const h of haystacks) {
-      const tokens = h.split(/[\/\.\-_\s]+/).filter(t => t.length > 2);
+      const tokens = h.split(/[\/\.\-_\s\\]+/).filter(t => t.length > 2);
       for (const t of tokens) {
         if (q.includes(t)) score += 1;
       }
@@ -46,9 +46,30 @@ function retrieveRelevantConnections(map, question) {
   return map.connections.filter(c => c.flaggedBefore).slice(0, 5);
 }
 
+function retrieveRelevantFiles(map, question) {
+  if (!map || !map.files) return [];
+  const q = question.toLowerCase();
+
+  const scored = map.files.map((f) => {
+    let score = 0;
+    const tokens = f.file.split(/[\/\.\-_\s\\]+/).filter(t => t.length > 2);
+    for (const t of tokens) {
+      if (q.includes(t)) score += 1;
+    }
+    return { fileMetadata: f, score };
+  });
+
+  const matched = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+  return matched.slice(0, 5).map(s => s.fileMetadata);
+}
+
 function retrieveRelevantLogEntries(log, question, maxEntries) {
   const q = question.toLowerCase();
-  const fileMentioned = (log.entries || []).find(e => q.includes(e.file?.toLowerCase().split('/').pop() || '~~none~~'));
+  const fileMentioned = (log.entries || []).find(e => {
+    const filename = e.file?.toLowerCase().split(/[\/\\]/).pop() || '~~none~~';
+    const basename = filename.split('.')[0];
+    return q.includes(filename) || q.includes(basename);
+  });
   if (fileMentioned) {
     return getRelevantEntries(log, { file: fileMentioned.file, maxEntries });
   }
@@ -83,6 +104,26 @@ async function answerQuestion({
 
   const relevantConnections = retrieveRelevantConnections(map, question);
   const relevantLogEntries = retrieveRelevantLogEntries(log, question, maxLogEntries);
+  const relevantFiles = retrieveRelevantFiles(map, question);
+
+  let totalLines = 0;
+  let totalBytes = 0;
+  if (map.files) {
+    for (const f of map.files) {
+      totalLines += f.lineCount || 0;
+      totalBytes += f.sizeBytes || 0;
+    }
+  }
+
+  const fileMetadataContext = {
+    projectTotals: { totalLines, totalBytes, fileCount: (map.files || []).length },
+    relevantFiles: relevantFiles.map(f => ({
+      file: f.file,
+      sizeBytes: f.sizeBytes,
+      lineCount: f.lineCount,
+      language: f.language
+    }))
+  };
 
   const mapContext = relevantConnections.map(c => ({
     id: c.id,
@@ -95,14 +136,14 @@ async function answerQuestion({
 
   const q = question.toLowerCase();
   const relevantEdges = (map.sameLanguageEdges || []).filter(e => {
-    const fileBase = e.file ? e.file.split('/').pop().split('.')[0].toLowerCase() : '';
+    const fileBase = e.file ? e.file.split(/[\/\\]/).pop().split('.')[0].toLowerCase() : '';
     const calleeBase = e.callee ? e.callee.toLowerCase() : '';
-    const fromBase = e.from ? e.from.split('/').pop().split('.')[0].toLowerCase() : '';
+    const fromBase = e.from ? e.from.split(/[\/\\]/).pop().split('.')[0].toLowerCase() : '';
     return (fileBase && q.includes(fileBase)) || (calleeBase && q.includes(calleeBase)) || (fromBase && q.includes(fromBase));
   }).slice(0, 5);
 
   const relevantSymbols = (map.symbols || []).filter(s => {
-    const fileBase = s.file ? s.file.split('/').pop().split('.')[0].toLowerCase() : '';
+    const fileBase = s.file ? s.file.split(/[\/\\]/).pop().split('.')[0].toLowerCase() : '';
     return (s.name && q.includes(s.name.toLowerCase())) || (fileBase && q.includes(fileBase));
   }).slice(0, 5);
 
@@ -137,6 +178,9 @@ async function answerQuestion({
     relevantSymbols.forEach(s => {
       if (s.file) filesToRead.add(s.file);
     });
+    relevantFiles.forEach(f => {
+      if (f.file) filesToRead.add(f.file);
+    });
 
     for (const f of [...filesToRead].slice(0, 3)) {
       try {
@@ -153,6 +197,7 @@ async function answerQuestion({
     question,
     mapContext,
     logContext,
+    fileMetadataContext,
     fileContentsContext: fileContents,
     conversationHistory,
   });
@@ -163,4 +208,4 @@ async function answerQuestion({
   };
 }
 
-module.exports = { answerQuestion, retrieveRelevantConnections, retrieveRelevantLogEntries };
+module.exports = { answerQuestion, retrieveRelevantConnections, retrieveRelevantLogEntries, retrieveRelevantFiles };
