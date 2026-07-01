@@ -21,6 +21,62 @@ graph TD
     end
 ```
 
+## Component Architecture
+
+```mermaid
+graph LR
+    subgraph VS Code Extension Host
+        Ext[extension.js]
+        Ext --> Core[Core Module]
+        
+        Core --> Watcher[File Watcher]
+        Core --> Storage[Storage JSON]
+        
+        Watcher --> MapBuilder[Map Builder]
+        MapBuilder --> Parsers[Parsers: JS, Python]
+        MapBuilder --> Matcher[Route Matcher]
+        
+        Watcher --> Detector[Break Detector]
+        Detector --> HUD[Status HUD Webview]
+        
+        Ext --> Prompter[Prompt Refiner]
+        Ext --> Chat[Context Chat]
+        
+        Prompter --> Mistral[Mistral API Client]
+        Chat --> Mistral
+    end
+```
+
+## Sequence Diagram: Passive Watching (Alt+A)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Ext as extension.js
+    participant Watcher as File Watcher
+    participant Map as relationshipMap.js
+    participant Detect as Connection Break Detector
+    participant HUD as Status HUD
+
+    User->>Ext: Press Alt+A
+    Ext->>HUD: Show "Scanning"
+    Ext->>Map: buildFullMap()
+    Map-->>Ext: map generated
+    Ext->>HUD: Show "Watching"
+    Ext->>Watcher: Start watching files
+    
+    Note over User, HUD: Later...
+    User->>Watcher: Edits and saves a file
+    Watcher->>Map: incrementalUpdate(file)
+    Map-->>Watcher: map updated
+    Watcher->>Detect: detectBreaks(oldMap, newMap)
+    alt Connection Broken
+        Detect->>HUD: Show "Flagged"
+    else Safe Edit
+        Detect->>HUD: Show "Watching"
+    end
+```
+
 ## Directory Structure
 
 ```text
@@ -38,6 +94,7 @@ watchtower/
 │   ├── parsers/              # Plugin-based AST parsers (JS/Py)
 │   └── prompt/               # Prompt refinement logic (Alt+P)
 ├── test/                     # Unit and Integration tests
+├── test-fixtures/            # Fixtures for tests
 ├── scripts/                  # Utilities for installation/testing
 ├── archive/                  # Previous spikes and deprecated code
 └── package.json              # Extension manifest
