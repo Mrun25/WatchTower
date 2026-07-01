@@ -31,7 +31,7 @@ AI coding agents inside IDEs make broad, multi-file edits from short, vague prom
 
 *(Placeholder for Screen Recording/Demo)*
 
-![Watchtower Demo](assets/demo.gif)
+https://github.com/Mrun25/WatchTower/raw/main/assets/Watchtower-video.mp4
 
 A small circular HUD shows passive-watch status at a glance (Off / Scanning / Watching / Flagged).
 
