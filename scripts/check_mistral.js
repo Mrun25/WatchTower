@@ -1,5 +1,5 @@
 const https = require('https');
-const MISTRAL_API_KEY = 'E9NDKsvKOV13vxiNDhHtmLe5XbJ9falB';
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 
 const data = JSON.stringify({
   model: 'mistral-large-latest',
