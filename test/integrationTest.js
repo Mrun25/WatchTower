@@ -105,7 +105,7 @@ const vscodeMock = {
     getConfiguration(_key) {
       // Return a minimal config proxy
       const cfg = {
-        mistralApiKey: 'E9NDKsvKOV13vxiNDhHtmLe5XbJ9falB', // package.json default fallback
+        mistralApiKey: process.env.MISTRAL_API_KEY || '', // set in your environment to run this test
         mistralModel: 'mistral-large-latest',
         flagThreshold: 'balanced',
         maxLogEntriesInPromptContext: 8,
