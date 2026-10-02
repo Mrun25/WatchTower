@@ -69,7 +69,7 @@
       "properties": {
         "watchtower.mistralApiKey": {
           "type": "string",
-          "default": "E9NDKsvKOV13vxiNDhHtmLe5XbJ9falB",
+          "default": "",
           "description": "API key for the Mistral cloud API. Stored via VS Code SecretStorage when set through the 'Watchtower: Set Mistral API Key' command; this setting is a fallback for environments where SecretStorage isn't convenient."
         },
         "watchtower.mistralModel": {
