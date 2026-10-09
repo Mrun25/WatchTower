@@ -106,7 +106,8 @@ class Storage {
         if (entry.isDirectory()) {
           if (skipDirs.has(entry.name)) continue;
           walk(fullPath);
-        } else {
+        } else if (entry.isFile()) {
+          // Do not follow symlinks: their targets can be outside the workspace.
           const ext = path.extname(entry.name).slice(1).toLowerCase();
           if (!extensions || extensions.includes(ext)) {
             results.push(fullPath);
