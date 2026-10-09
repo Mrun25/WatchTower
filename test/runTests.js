@@ -296,6 +296,44 @@ def update_item(item_id):
 });
 
 // -----------------------------------------------------------------------
+// Regression: file symlinks must not pull external source into the map.
+// -----------------------------------------------------------------------
+section('Regression - project scans exclude symbolic links', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'watchtower-scan-'));
+  try {
+    const project = path.join(root, 'project');
+    const external = path.join(root, 'external');
+    fs.mkdirSync(path.join(project, 'nested'), { recursive: true });
+    fs.mkdirSync(external);
+    fs.mkdirSync(path.join(project, 'node_modules'));
+    fs.mkdirSync(path.join(project, '.hidden'));
+    fs.writeFileSync(path.join(project, 'app.js'), 'const app = 1;');
+    fs.writeFileSync(path.join(project, 'nested', 'worker.py'), 'worker = 1');
+    fs.writeFileSync(path.join(project, 'notes.txt'), 'notes');
+    fs.writeFileSync(path.join(external, 'private.js'), 'const secret = 1;');
+    fs.writeFileSync(path.join(project, 'node_modules', 'dependency.js'), '');
+    fs.writeFileSync(path.join(project, '.hidden', 'hidden.js'), '');
+    fs.symlinkSync(path.join(external, 'private.js'), path.join(project, 'linked.js'), 'file');
+    fs.symlinkSync(path.join(project, 'app.js'), path.join(project, 'alias.js'), 'file');
+    fs.symlinkSync(path.join(external, 'missing.js'), path.join(project, 'dangling.js'), 'file');
+    fs.symlinkSync(external, path.join(project, 'linked-dir'), process.platform === 'win32' ? 'junction' : 'dir');
+
+    const storage = new Storage(project);
+    const relativeFiles = extensions => storage.listProjectFiles(extensions)
+      .map(file => path.relative(project, file).split(path.sep).join('/')).sort();
+    assertEqual(relativeFiles(['js', 'py']), ['app.js', 'nested/worker.py'],
+      'filtered scan includes regular source files only, never symlinks');
+    assertEqual(relativeFiles(), ['app.js', 'nested/worker.py', 'notes.txt'],
+      'unfiltered scan also excludes file symlinks and ignored directories');
+    const { map } = buildFullMap(storage);
+    assert(!map.files.some(item => /linked|alias|dangling/.test(item.file)),
+      'full map does not include linked or dangling files');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// -----------------------------------------------------------------------
 // Cleanup + summary
 // -----------------------------------------------------------------------
 if (tmpProjectDir) {
