@@ -5,7 +5,6 @@
   
   <p>
     <a href="https://github.com/Mrun25/WatchTower/actions"><img src="https://img.shields.io/github/actions/workflow/status/Mrun25/WatchTower/main.yml?branch=main" alt="Build Status"></a>
-    <a href="https://marketplace.visualstudio.com/items?itemName=watchtower-dev.watchtower"><img src="https://img.shields.io/visual-studio-marketplace/v/watchtower-dev.watchtower.svg" alt="Version"></a>
     <a href="https://github.com/Mrun25/WatchTower/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
   </p>
 </div>
