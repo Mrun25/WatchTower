@@ -334,6 +334,56 @@ section('Regression - project scans exclude symbolic links', () => {
 });
 
 // -----------------------------------------------------------------------
+// Regression: passive watching respects workspace boundaries and lifecycle.
+// -----------------------------------------------------------------------
+section('Regression - watcher paths and pause lifecycle', () => {
+  const { Watcher } = require('../src/core/watcher');
+  const root = path.join(os.tmpdir(), 'watchtower-workspace');
+  let notifications = 0;
+  const watcher = new Watcher({
+    vscode: { workspace: { createFileSystemWatcher() {
+      return { onDidChange() {}, onDidCreate() {}, onDidDelete() {}, dispose() {} };
+    } } },
+    storage: new Storage(root),
+    getFlagThreshold: () => 'balanced',
+    onFlags() {},
+    onAnyChange() { notifications++; },
+  });
+  for (const name of ['node_modules-app/index.js', '.gitignore', '.github-note.js']) {
+    assert(!watcher._shouldIgnore(path.join(root, name)), `does not ignore a similarly named project path: ${name}`);
+  }
+  for (const name of ['node_modules/index.js', '.git/config', '.watchtower/change-log.json',
+    'dist/bundle.js', 'build/output.js', 'coverage/report.json', '.next/server.js',
+    'venv/lib/source.py', 'out/output.js', '__pycache__/code.pyc']) {
+    assert(watcher._shouldIgnore(path.join(root, name)), `ignores generated/internal path: ${name}`);
+  }
+  assert(watcher._shouldIgnore(path.join(root, '..', 'outside', 'secret.js')),
+    'events from another workspace are ignored');
+  watcher.start();
+  watcher._queueChange(path.join(root, 'app.js'));
+  assertEqual(watcher._pendingFiles.size, 1, 'active changes enter the pending batch');
+  watcher.stop();
+  assertEqual(watcher._pendingFiles.size, 0, 'pausing discards the canceled pending batch');
+  assertEqual(watcher._debounceTimer, null, 'pausing releases the timer reference');
+  watcher._queueChange(path.join(root, 'late.js'));
+  assertEqual(watcher._pendingFiles.size, 0, 'late events cannot queue work while paused');
+  assertEqual(notifications, 1, 'late events do not notify the UI while paused');
+  watcher._processPending();
+  assertEqual(watcher._debounceTimer, null, 'a canceled callback cannot restart processing');
+  watcher.start();
+  watcher._queueChange(path.join(root, 'resumed.js'));
+  assertEqual([...watcher._pendingFiles], [path.join(root, 'resumed.js')],
+    'resuming creates a new batch without stale paused changes');
+  watcher.stop();
+  const nested = new Watcher({
+    vscode: {}, storage: new Storage(path.join(root, 'node_modules', 'own-project')),
+    getFlagThreshold: () => 'balanced', onFlags() {},
+  });
+  assert(!nested._shouldIgnore(path.join(nested.storage.projectRoot, 'app.js')),
+    'ignored ancestor directory names outside the workspace do not hide source');
+});
+
+// -----------------------------------------------------------------------
 // Cleanup + summary
 // -----------------------------------------------------------------------
 if (tmpProjectDir) {

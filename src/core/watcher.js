@@ -39,9 +39,8 @@ class Watcher {
     if (this.active) return;
     this.active = true;
 
-    // Watch broadly; per-file filtering (skip node_modules etc.) happens
-    // inside Storage.listProjectFiles when we actually rebuild, and here
-    // we just gate which saves trigger a debounced update at all.
+    // VS Code reports events across workspace folders. Filter to this
+    // project and skip generated/internal directories before queuing work.
     this.fsWatcher = this.vscode.workspace.createFileSystemWatcher('**/*');
     const handleUri = (uri) => this._queueChange(uri.fsPath);
 
@@ -59,10 +58,12 @@ class Watcher {
       this.fsWatcher = null;
     }
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = null;
+    this._pendingFiles.clear();
   }
 
   _queueChange(fsPath) {
-    if (this._shouldIgnore(fsPath)) return;
+    if (!this.active || this._shouldIgnore(fsPath)) return;
     this._pendingFiles.add(fsPath);
     this.onAnyChange(fsPath);
 
@@ -71,11 +72,20 @@ class Watcher {
   }
 
   _shouldIgnore(fsPath) {
-    const ignoredSegments = ['.git', 'node_modules', '.watchtower', '__pycache__', '.venv'];
-    return ignoredSegments.some(seg => fsPath.includes(`${path.sep}${seg}${path.sep}`) || fsPath.includes(`${path.sep}${seg}`));
+    const relative = path.relative(this.storage.projectRoot, fsPath);
+    if (path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`)) {
+      return true;
+    }
+    const ignoredSegments = new Set([
+      '.git', 'node_modules', '.watchtower', '__pycache__', '.venv', 'venv',
+      'dist', 'build', 'coverage', '.next', 'out',
+    ]);
+    return relative.split(path.sep).some(segment => ignoredSegments.has(segment));
   }
 
   _processPending() {
+    this._debounceTimer = null;
+    if (!this.active) return;
     const changedFiles = [...this._pendingFiles];
     this._pendingFiles.clear();
     if (changedFiles.length === 0) return;
