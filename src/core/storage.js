@@ -52,8 +52,7 @@ class Storage {
   }
 
   writeMap(map) {
-    this.ensureDataDir();
-    fs.writeFileSync(this.mapPath, JSON.stringify(map, null, 2), 'utf-8');
+    this._writeJson(this.mapPath, map);
   }
 
   readLog() {
@@ -69,8 +68,7 @@ class Storage {
   }
 
   writeLog(log) {
-    this.ensureDataDir();
-    fs.writeFileSync(this.logPath, JSON.stringify(log, null, 2), 'utf-8');
+    this._writeJson(this.logPath, log);
   }
 
   readSummary() {
@@ -79,8 +77,23 @@ class Storage {
   }
 
   writeSummary(summary) {
+    this._writeJson(this.summaryPath, summary);
+  }
+
+  /** Replace one document only after serialization and writing succeed. */
+  _writeJson(destination, value) {
+    const content = JSON.stringify(value, null, 2);
     this.ensureDataDir();
-    fs.writeFileSync(this.summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+    // Keep staging on the same filesystem so rename is an atomic replacement.
+    // A unique directory avoids collisions between extension instances.
+    const stagingDir = fs.mkdtempSync(path.join(this.dataDir, '.tmp-'));
+    const stagedPath = path.join(stagingDir, 'document.json');
+    try {
+      fs.writeFileSync(stagedPath, content, 'utf-8');
+      fs.renameSync(stagedPath, destination);
+    } finally {
+      fs.rmSync(stagingDir, { recursive: true, force: true });
+    }
   }
 
   /** Recursively list project files, skipping common noise directories. */
