@@ -384,6 +384,71 @@ section('Regression - watcher paths and pause lifecycle', () => {
 });
 
 // -----------------------------------------------------------------------
+// Regression: failed persistence must preserve the last good JSON document.
+// -----------------------------------------------------------------------
+section('Regression - atomic JSON persistence', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'watchtower-atomic-'));
+  try {
+    const storage = new Storage(root);
+    for (const [write, read, filename] of [
+      ['writeMap', 'readMap', 'mapPath'],
+      ['writeLog', 'readLog', 'logPath'],
+      ['writeSummary', 'readSummary', 'summaryPath'],
+    ]) {
+      const original = { entries: [{ note: 'last good state' }] };
+      storage[write](original);
+      const before = fs.readFileSync(storage[filename], 'utf-8');
+      const writeFile = fs.writeFileSync;
+      let failure;
+      try {
+        fs.writeFileSync = (file, content, options) => {
+          writeFile(file, content.slice(0, 5), options);
+          throw new Error('simulated disk-full write');
+        };
+        storage[write]({ entries: [{ note: 'new state' }] });
+      } catch (err) {
+        failure = err;
+      } finally {
+        fs.writeFileSync = writeFile;
+      }
+      assert(failure && failure.message === 'simulated disk-full write', `${write} reports the write failure`);
+      assertEqual(fs.readFileSync(storage[filename], 'utf-8'), before,
+        `${write} does not truncate the previous document on a partial write`);
+      assertEqual(fs.readdirSync(storage.dataDir).filter(name => name.startsWith('.tmp-')), [],
+        `${write} cleans temporary data after a write failure`);
+      storage[write](original);
+      const rename = fs.renameSync;
+      failure = null;
+      try {
+        fs.renameSync = () => { throw new Error('simulated rename failure'); };
+        storage[write]({ entries: [] });
+      } catch (err) {
+        failure = err;
+      } finally {
+        fs.renameSync = rename;
+      }
+      assert(failure && failure.message === 'simulated rename failure', `${write} reports a failed replacement`);
+      assertEqual(storage[read](), original, `${write} retains readable JSON after replacement failure`);
+      assertEqual(fs.readdirSync(storage.dataDir).filter(name => name.startsWith('.tmp-')), [],
+        `${write} cleans temporary data after replacement failure`);
+      const updated = { entries: [{ note: 'successful replacement' }] };
+      storage[write](updated);
+      assertEqual(storage[read](), updated, `${write} replaces the document on success`);
+      const circular = {};
+      circular.self = circular;
+      failure = null;
+      try { storage[write](circular); } catch (err) { failure = err; }
+      assert(failure instanceof TypeError, `${write} reports serialization errors`);
+      assertEqual(storage[read](), updated, `${write} preserves the document when serialization fails`);
+      assertEqual(fs.readdirSync(storage.dataDir).filter(name => name.startsWith('.tmp-')), [],
+        `${write} leaves no staging data after success or serialization failure`);
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// -----------------------------------------------------------------------
 // Cleanup + summary
 // -----------------------------------------------------------------------
 if (tmpProjectDir) {
